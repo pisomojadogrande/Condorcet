@@ -1,9 +1,10 @@
 #!/usr/bin/env ruby
 require 'aws-sdk' # gem install aws-sdk
+require 'securerandom'
 
 DOMAIN_NAME = 'CondorcetVote'
 WORKFLOW_TYPE_NAME = 'TestWorkflowType'
-TASK_LIST_NAME = 'TestTaskList'
+WORKFLOW_ID = 'TestWorkflowId'
 DECIDER_IDENTITY = 'TestDecider'
 
 access_key_id = ENV['AWS_ACCESS_KEY']
@@ -23,10 +24,24 @@ workflow_type = swf.list_workflow_types(
 )
 puts workflow_type.inspect
 
-puts "Starting poll for #{TASK_LIST_NAME}"
+task_list = SecureRandom.uuid
+
+r = swf.start_workflow_execution(
+  :domain => DOMAIN_NAME,
+  :workflow_id => WORKFLOW_ID,
+  :workflow_type => { :name => WORKFLOW_TYPE_NAME, :version => '0.1' },
+  :task_list => { :name => task_list },
+  :input => 'Some input string',
+  :execution_start_to_close_timeout => '120', # Time me out in 2mins
+)
+puts "Started execution #{task_list}: #{r.inspect}"
+
+puts "Starting poll for #{task_list}"
 decision_task = swf.poll_for_decision_task(
   :domain => domain.name,
-  :task_list => { :name => TASK_LIST_NAME },
+  :task_list => { :name => task_list },
   :identity => DECIDER_IDENTITY
 )
-puts decision_task.inspect
+decision_task.events.each do |e|
+  puts "Event #{e.event_type} id=#{e.event_id} @#{e.event_timestamp}"
+end
