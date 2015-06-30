@@ -36,12 +36,22 @@ r = swf.start_workflow_execution(
 )
 puts "Started execution #{task_list}: #{r.inspect}"
 
+def dump_decision_task_event(e)
+  puts "Event #{e.event_type} id=#{e.event_id} @#{e.event_timestamp}"
+  case e.event_type
+  when 'WorkflowExecutionStarted'
+    puts "\tworkflow_execution_started_event_attributes=#{e.workflow_execution_started_event_attributes.inspect}"
+  when 'DecisionTaskScheduled'
+    puts "\tdecision_task_scheduled_event_attributes=#{e.decision_task_scheduled_event_attributes.inspect}"
+  when 'DecisionTaskStarted'
+    puts "\tdecision_task_started_event_attribute=#{e.decision_task_started_event_attributes.inspect}"
+  end
+end
+
 puts "Starting poll for #{task_list}"
 decision_task = swf.poll_for_decision_task(
   :domain => domain.name,
   :task_list => { :name => task_list },
   :identity => DECIDER_IDENTITY
 )
-decision_task.events.each do |e|
-  puts "Event #{e.event_type} id=#{e.event_id} @#{e.event_timestamp}"
-end
+decision_task.events.each { |e| dump_decision_task_event e }
