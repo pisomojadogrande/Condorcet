@@ -2,22 +2,15 @@
 require 'swf_client'
 require 'securerandom'
 
-WORKFLOW_TYPE_NAME = 'TestWorkflowType'
 WORKFLOW_ID = 'TestWorkflowId'
 DECIDER_IDENTITY = 'TestDecider'
 
-swf_helper = SwfClient.instance
+swf = SwfClient.instance.client
 
-swf = swf_helper.client
-
-domain = swf_helper.domain
+domain = SwfClient.instance.domain
 puts domain.inspect
 
-workflow_type = swf.list_workflow_types(
-  :domain => domain.name,
-  :name => WORKFLOW_TYPE_NAME,
-  :registration_status => 'REGISTERED'
-)
+workflow_type = SwfClient.instance.workflow_type
 puts workflow_type.inspect
 
 task_list = SecureRandom.uuid
@@ -25,7 +18,7 @@ task_list = SecureRandom.uuid
 r = swf.start_workflow_execution(
   :domain => domain.name,
   :workflow_id => WORKFLOW_ID,
-  :workflow_type => { :name => WORKFLOW_TYPE_NAME, :version => '0.1' },
+  :workflow_type => { :name => workflow_type.name, :version => '0.1' },
   :task_list => { :name => task_list },
   :input => 'Some input string',
   :execution_start_to_close_timeout => '120', # Time me out in 2mins
