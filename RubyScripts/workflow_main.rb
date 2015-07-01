@@ -1,20 +1,16 @@
 #!/usr/bin/env ruby
-require 'aws-sdk' # gem install aws-sdk
+require 'swf_client'
 require 'securerandom'
 
-DOMAIN_NAME = 'CondorcetVote'
 WORKFLOW_TYPE_NAME = 'TestWorkflowType'
 WORKFLOW_ID = 'TestWorkflowId'
 DECIDER_IDENTITY = 'TestDecider'
 
-access_key_id = ENV['AWS_ACCESS_KEY']
-secret_key = ENV['AWS_SECRET_KEY']
+swf_helper = SwfClient.instance
 
-Aws.config[:region] = 'us-east-1'
+swf = swf_helper.client
 
-swf = Aws::SWF::Client.new :access_key_id => access_key_id, :secret_access_key => secret_key
-
-domain = swf.list_domains(:registration_status => 'REGISTERED').domain_infos.find { |d| d.name == DOMAIN_NAME }
+domain = swf_helper.domain
 puts domain.inspect
 
 workflow_type = swf.list_workflow_types(
@@ -27,7 +23,7 @@ puts workflow_type.inspect
 task_list = SecureRandom.uuid
 
 r = swf.start_workflow_execution(
-  :domain => DOMAIN_NAME,
+  :domain => domain.name,
   :workflow_id => WORKFLOW_ID,
   :workflow_type => { :name => WORKFLOW_TYPE_NAME, :version => '0.1' },
   :task_list => { :name => task_list },
