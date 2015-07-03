@@ -60,11 +60,9 @@ def dump_decision_task_event(e)
   end
 end
 
-def make_decision(decision_task, task_list)
-  execution_detail = SwfClient.instance.current_workflow_execution_detail
-  context = execution_detail[:latest_execution_context]
-  puts "Making decision based on \'#{context}\'; decision_task = #{decision_task.task_token}"
-  state = JSON.load context
+def make_decision(decision_task, task_list, next_execution_context)
+  puts "Making decision based on \'#{next_execution_context}\'; decision_task = #{decision_task.task_token}"
+  state = JSON.load next_execution_context
   
   if state && state.has_key?('candidates')
     puts 'Done; completing workflow'
@@ -87,15 +85,24 @@ def make_decision(decision_task, task_list)
   end
   SwfClient.instance.client.respond_decision_task_completed(
     :task_token => decision_task.task_token,
-    :decisions => [ decision ]
+    :decisions => [ decision ],
+    :execution_context => next_execution_context
   )
 end
 
 def complete_activity(activity_result)
-  puts "Completed with result #{activity_result}"
+  execution_detail = SwfClient.instance.current_workflow_execution_detail
+  current_context = execution_detail[:latest_execution_context]
+  puts "Completed with result #{activity_result}; adding to context #{current_context}"
+  state = {}
+  current_context and state = JSON.load(current_context)
+  state['candidates'] = activity_result # FIXME; merge instead
+  puts "New state: #{state.to_json}"
+  state.to_json
 end
 
 next_page_token = nil
+next_execution_context = nil
 while SwfClient.instance.current_workflow_execution
   puts "Starting poll for #{task_list[:name]}"
   decision_task = swf.poll_for_decision_task(
@@ -104,14 +111,18 @@ while SwfClient.instance.current_workflow_execution
     :identity => DECIDER_IDENTITY,
     :next_page_token => next_page_token
   )
-  next_page_token = decision_task[:next_page_token]
+  next_page_token = decision_task.next_page_token
   puts "Decision task: #{decision_task.task_token}"
   
   decision_task.events or next
   decision_task.events.each do |e|
     dump_decision_task_event e
-    e.event_type == 'DecisionTaskStarted' and make_decision decision_task, task_list
-    e.event_type == 'ActivityTaskCompleted' and complete_activity(
+    e.event_type == 'DecisionTaskStarted' and make_decision(
+      decision_task,
+      task_list,
+      next_execution_context
+    )
+    e.event_type == 'ActivityTaskCompleted' and next_execution_context = complete_activity(
       e.activity_task_completed_event_attributes.result
     )
   end
