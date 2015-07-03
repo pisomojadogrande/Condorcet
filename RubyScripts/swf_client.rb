@@ -35,4 +35,41 @@ class SwfClient
     end
     @workflow_type
   end
+  
+  def ensure_activity_type_registered(name, description)
+    begin
+      @client.register_activity_type(
+        :domain => domain.name,
+        :name => name,
+        :version => '0.1',
+        :description => description
+      )
+    rescue Aws::SWF::Errors::TypeAlreadyExistsFault => e
+      # okay
+    end
+  end
+  
+  def current_workflow_execution(seconds_ago = 3600)
+    r = @client.list_open_workflow_executions(
+      :domain => domain.name,
+      :start_time_filter => { :oldest_date => Time.now - seconds_ago },
+      :type_filter => { :name => SwfClient.instance.workflow_type.name }
+    )
+    if r[:execution_infos].empty?
+      nil
+    else
+      r[:execution_infos].first.execution # has [:workflow_id], [:run_id]
+    end
+  end
+  
+  def current_workflow_task_list(seconds_ago = 3600)
+    execution = current_workflow_execution seconds_ago
+    execution or raise "No open workflows for #{domain.name}"
+    workflow_execution_description = @client.describe_workflow_execution(
+      :domain => domain.name,
+      :execution => execution
+    )
+    #puts workflow_execution_description.inspect
+    workflow_execution_description.execution_configuration.task_list
+  end
 end

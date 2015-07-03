@@ -3,11 +3,13 @@ require 'swf_client'
 
 swf = SwfClient.instance.client
 domain = SwfClient.instance.domain
+task_list = SwfClient.instance.current_workflow_task_list
 
-r = swf.list_open_workflow_executions(
+puts task_list.inspect
+
+r = swf.poll_for_activity_task(
   :domain => domain.name,
-  :start_time_filter => { :oldest_date => Time.now - 3600 },
-  :type_filter => { :name => SwfClient.instance.workflow_type.name }
+  :task_list => task_list,
+  :identity => 'PopulateCandidates'
 )
-execution = r[:execution_infos].first.execution
-puts execution.inspect # has [:workflow_id], [:run_id]
+puts r.inspect
