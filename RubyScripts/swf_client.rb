@@ -97,4 +97,59 @@ class SwfClient
     #puts workflow_execution_description.inspect
     workflow_execution_description.execution_configuration.task_list
   end
+  
+  def terminal_event(execution)
+    terminal_event_types = [
+      'WorkflowExecutionCompleted',
+      'WorkflowExecutionFailed',
+      'WorkflowExecutionTimedOut'
+    ]
+    terminal_event = nil
+    next_page_token = nil
+    begin
+      r = @client.get_workflow_execution_history(
+        :domain => @domain.name,
+        :execution => execution,
+        :next_page_token => next_page_token
+      )
+      next_page_token = r.next_page_token
+      
+      r.events.each do |e|
+        if terminal_event_types.include? e.event_type
+          terminal_event = e
+        end
+      end
+    end while next_page_token
+    terminal_event
+  end
+  
+  def self.dump_decision_task_event(e)
+    puts "Event #{e.event_type} id=#{e.event_id} @#{e.event_timestamp}"
+    case e.event_type
+    when 'WorkflowExecutionStarted'
+      puts "workflow_execution_started_event_attributes=#{e.workflow_execution_started_event_attributes.inspect}"
+    when 'WorkflowExecutionCompleted'
+      puts "workflow_execuution_completed_event_attributes=#{e.workflow_execution_completed_event_attributes.inspect}"
+    when 'WorkflowExecutionFailed'
+      puts "workflow_execution_failed_event_attributes=#{e.workflow_execution_failed_event_attributes.inspect}"
+    when 'WorkflowExecutionTerminated'
+      puts "workflow_execution_terminated_event_attributes=#{e.workflow_execution_terminated_event_attributes.inspect}"
+    when 'WorkflowExecutionTimedOutEventAttributes'
+      puts "workflow_execution_timed_out_event_attributes=#{e.workflow_execution_timed_out_event_attributes.inspect}"
+    when 'DecisionTaskScheduled'
+      puts "decision_task_scheduled_event_attributes=#{e.decision_task_scheduled_event_attributes.inspect}"
+    when 'DecisionTaskStarted'
+      puts "decision_task_started_event_attributes=#{e.decision_task_started_event_attributes.inspect}"
+    when 'ActivityTaskScheduled'
+      puts "activity_task_scheduled_event_attributes=#{e.activity_task_scheduled_event_attributes}"
+    when 'ActivityTaskStarted'
+      puts "activity_task_started_event_attributes=#{e.activity_task_started_event_attributes}"
+    when 'ActivityTaskCompleted'
+      puts "activity_task_completed_event_attributes=#{e.activity_task_completed_event_attributes}"
+    when 'ActivityTaskTimedOut'
+      puts "activity_task_timed_out_event_attributes=#{e.activity_task_timed_out_event_attributes}"
+    when 'ScheduleActivityTaskFailed'
+      puts "schedule_activity_task_failed_event_attributes=#{e.schedule_activity_task_failed_event_attributes.inspect}"
+    end
+  end
 end
