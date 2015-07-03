@@ -1,4 +1,5 @@
 require 'securerandom'
+require 'json'
 require 'swf_client'
 
 class DecisionLogic
@@ -45,25 +46,31 @@ class DecisionLogic
   
   private
   
-  def start_workflow_execution
-    decision = {
+  def schedule_task_decision(activity_type)
+    {
       :decision_type => 'ScheduleActivityTask',
       :schedule_activity_task_decision_attributes => {
-        :activity_type => SwfClient.instance.activity_type('PopulateCandidates'),
+        :activity_type => SwfClient.instance.activity_type(activity_type),
         :activity_id => SecureRandom.uuid,
         :task_list => @task_list
       }
     }
-    @decisions.push decision
+  end
+  
+  def start_workflow_execution
+    @decisions.push schedule_task_decision('PopulateCandidates')
   end
   
   def complete_activity(activity_task)
     case activity_task[:activity_type]
     when 'PopulateCandidates'
+      @candidates = JSON.load activity_task[:result]
+      @decisions.push schedule_task_decision('RegisterVoters')
+    when 'RegisterVoters'
       decision = {
         :decision_type => 'CompleteWorkflowExecution',
         :complete_workflow_execution_decision_attributes => {
-          :result => "DONE: #{activity_task[:result]}"
+          :result => "DONE: #{@candidates.inspect}"
         }
       }
       @decisions.push decision

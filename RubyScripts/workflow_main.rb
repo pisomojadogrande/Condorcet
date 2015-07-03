@@ -12,6 +12,7 @@ domain = SwfClient.instance.domain
 puts domain.inspect
 
 SwfClient.instance.ensure_activity_type_registered 'PopulateCandidates', 'Populate the set of candidates for the vote'
+SwfClient.instance.ensure_activity_type_registered 'RegisterVoters', 'Add voters to the rolls'
 
 workflow_type = SwfClient.instance.workflow_type
 puts workflow_type.inspect

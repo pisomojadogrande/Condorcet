@@ -10,7 +10,8 @@ class SwfClient
   WORKFLOW_TYPE_NAME = 'TestWorkflowType'
   
   ACTIVITY_VERSION_MAP = {
-    'PopulateCandidates' => '0.2'
+    'PopulateCandidates' => '0.2',
+    'RegisterVoters' => '0.1'
   }
   
   def initialize

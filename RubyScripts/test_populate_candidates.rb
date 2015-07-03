@@ -14,13 +14,27 @@ while true
     :task_list => task_list,
     :identity => 'PopulateCandidatesActor'
   )
-  if r[:activity_type][:name] == 'PopulateCandidates'
+  case r.activity_type.name
+  when 'PopulateCandidates'
     result = [ 'foo', 'bar', 'baz', 'quux' ]
     swf.respond_activity_task_completed(
-      :task_token => r[:task_token],
+      :task_token => r.task_token,
       :result => result.to_json
     )
-    exit 0  
+  when 'RegisterVoters'
+    puts "Register some voters:"
+    while true
+      line = STDIN.readline.chomp
+      puts "Voter: #{line}"
+      break if line.empty?
+      swf.record_activity_task_heartbeat(
+        :task_token => r.task_token,
+        :details => line.chomp
+      )
+    end
+    swf.respond_activity_task_completed(
+      :task_token => r.task_token
+    )
   else
     puts r.inspect
   end
