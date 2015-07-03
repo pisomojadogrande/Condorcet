@@ -28,12 +28,14 @@ r = swf.start_workflow_execution(
   :task_start_to_close_timeout => '120'
 )
 puts "Started execution #{task_list[:name]}: #{r.inspect}"
-run_id = r[:run_id]
-
+execution = {
+  :workflow_id => WORKFLOW_ID,
+  :run_id => r.run_id
+}
 
 decision_logic = DecisionLogic.new task_list
 next_page_token = nil
-while SwfClient.instance.current_workflow_execution
+while SwfClient.instance.is_open? execution
   puts "Starting poll for #{task_list[:name]}"
   decision_task = swf.poll_for_decision_task(
     :domain => domain.name,
@@ -58,10 +60,6 @@ while SwfClient.instance.current_workflow_execution
   )
 end
 
-execution = {
-  :workflow_id => WORKFLOW_ID,
-  :run_id => run_id
-}
 execution_detail = swf.describe_workflow_execution(
   :domain => domain.name,
   :execution => execution

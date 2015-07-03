@@ -65,6 +65,14 @@ class SwfClient
     end
   end
   
+  def is_open?(execution)
+    r = @client.describe_workflow_execution(
+      :domain => domain.name,
+      :execution => execution
+    )
+    r.execution_info.execution_status == 'OPEN'
+  end
+  
   def current_workflow_execution(seconds_ago = 3600)
     r = @client.list_open_workflow_executions(
       :domain => domain.name,
@@ -77,16 +85,7 @@ class SwfClient
       r[:execution_infos].first.execution # has [:workflow_id], [:run_id]
     end
   end
-  
-  def current_workflow_execution_detail(seconds_ago = 3600)
-    execution = current_workflow_execution seconds_ago
-    execution or raise "No open workflows for #{domain.name}"
-    @client.describe_workflow_execution(
-      :domain => domain.name,
-      :execution => execution
-    )
-  end
-  
+   
   def current_workflow_task_list(seconds_ago = 3600)
     execution = current_workflow_execution seconds_ago
     execution or raise "No open workflows for #{domain.name}"
@@ -108,7 +107,7 @@ class SwfClient
     next_page_token = nil
     begin
       r = @client.get_workflow_execution_history(
-        :domain => @domain.name,
+        :domain => domain.name,
         :execution => execution,
         :next_page_token => next_page_token
       )
