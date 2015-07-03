@@ -9,6 +9,10 @@ class SwfClient
   DOMAIN_NAME = 'CondorcetVote'
   WORKFLOW_TYPE_NAME = 'TestWorkflowType'
   
+  ACTIVITY_VERSION_MAP = {
+    'PopulateCandidates' => '0.2'
+  }
+  
   def initialize
     access_key_id = ENV['AWS_ACCESS_KEY']
     secret_key = ENV['AWS_SECRET_KEY']
@@ -36,13 +40,25 @@ class SwfClient
     @workflow_type
   end
   
+  def activity_type(name)
+    ACTIVITY_VERSION_MAP or raise "Unknown activity \'#{name}\'"
+    {
+      :name => name,
+      :version => ACTIVITY_VERSION_MAP[name]
+    }
+  end
+  
   def ensure_activity_type_registered(name, description)
     begin
       @client.register_activity_type(
         :domain => domain.name,
         :name => name,
-        :version => '0.1',
-        :description => description
+        :version => ACTIVITY_VERSION_MAP[name],
+        :description => description,
+        :default_task_schedule_to_close_timeout => '120',
+        :default_task_schedule_to_start_timeout => '120',
+        :default_task_start_to_close_timeout => '120',
+        :default_task_heartbeat_timeout => '120'
       )
     rescue Aws::SWF::Errors::TypeAlreadyExistsFault => e
       # okay
