@@ -60,16 +60,36 @@ def dump_decision_task_event(e)
   end
 end
 
-def make_decision(decision_task, task_list, next_execution_context)
-  puts "Making decision based on \'#{next_execution_context}\'; decision_task = #{decision_task.task_token}"
-  state = JSON.load next_execution_context
+def update_context(execution, last_activity_type, last_activity_result)
+  swf = SwfClient.instance.client
+  execution_detail = swf.describe_workflow_execution(
+    :domain => SwfClient.instance.domain.name,
+    :execution => execution
+  )
+  current_context = execution_detail.latest_execution_context
+  puts "Updating context (#{current_context}) with activity=#{last_activity_type}, result=#{last_activity_result}"
   
-  if state && state.has_key?('candidates')
+  state = {}
+  current_context and state = JSON.load(current_context)
+  
+  case last_activity_type
+  when 'PopulateCandidates'
+    state['candidates'] = last_activity_result
+  end
+  
+  state
+end
+
+def make_decision(decision_task, task_list, last_activity_type, last_activity_result)
+  new_context = update_context decision_task.workflow_execution, last_activity_type, last_activity_result
+  puts "Making decision based on \'#{new_context.inspect}\'"
+  
+  if new_context.has_key?('candidates')
     puts 'Done; completing workflow'
     decision = {
       :decision_type => 'CompleteWorkflowExecution',
       :complete_workflow_execution_decision_attributes => {
-        :result => "DONE: #{state['candidates']}"
+        :result => "DONE: #{new_context['candidates']}"
       }
     }
   else
@@ -86,19 +106,8 @@ def make_decision(decision_task, task_list, next_execution_context)
   SwfClient.instance.client.respond_decision_task_completed(
     :task_token => decision_task.task_token,
     :decisions => [ decision ],
-    :execution_context => next_execution_context
+    :execution_context => new_context.to_json
   )
-end
-
-def complete_activity(activity_result)
-  execution_detail = SwfClient.instance.current_workflow_execution_detail
-  current_context = execution_detail[:latest_execution_context]
-  puts "Completed with result #{activity_result}; adding to context #{current_context}"
-  state = {}
-  current_context and state = JSON.load(current_context)
-  state['candidates'] = activity_result # FIXME; merge instead
-  puts "New state: #{state.to_json}"
-  state.to_json
 end
 
 next_page_token = nil
@@ -119,16 +128,18 @@ while SwfClient.instance.current_workflow_execution
   decision_task.events or next
 
   events_since_last_decision = decision_task.events.select {|e| e.event_id > decision_task.previous_started_event_id } 
+  activity_type = nil
+  activity_result = nil
   events_since_last_decision.each do |e|
     dump_decision_task_event e
-    e.event_type == 'DecisionTaskStarted' and make_decision(
-      decision_task,
-      task_list,
-      next_execution_context
-    )
-    e.event_type == 'ActivityTaskCompleted' and next_execution_context = complete_activity(
-      e.activity_task_completed_event_attributes.result
-    )
+    case e.event_type
+    when 'ActivityTaskScheduled'
+      activity_type = e.activity_task_scheduled_event_attributes.activity_type.name
+    when 'ActivityTaskCompleted'
+      activity_result = e.activity_task_completed_event_attributes.result
+    when 'DecisionTaskStarted'
+      make_decision decision_task, task_list, activity_type, activity_result
+    end
   end
 end
 
