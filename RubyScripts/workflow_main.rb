@@ -112,10 +112,14 @@ while SwfClient.instance.current_workflow_execution
     :next_page_token => next_page_token
   )
   next_page_token = decision_task.next_page_token
-  puts "Decision task: #{decision_task.task_token}"
+  puts "Decision task, previous_started_event_id=#{decision_task.previous_started_event_id}: #{decision_task.events.count} events"
+  puts "Next page token #{next_page_token}"
+  puts "Decision task token: #{decision_task.task_token}"
   
   decision_task.events or next
-  decision_task.events.each do |e|
+
+  events_since_last_decision = decision_task.events.select {|e| e.event_id > decision_task.previous_started_event_id } 
+  events_since_last_decision.each do |e|
     dump_decision_task_event e
     e.event_type == 'DecisionTaskStarted' and make_decision(
       decision_task,
