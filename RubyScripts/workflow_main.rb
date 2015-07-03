@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
 require 'swf_client'
 require 'securerandom'
+require 'json'
 
 WORKFLOW_ID = 'TestWorkflowId'
 DECIDER_IDENTITY = 'TestDecider'
@@ -59,34 +60,60 @@ def dump_decision_task_event(e)
   end
 end
 
+def make_decision(decision_task, task_list)
+  execution_detail = SwfClient.instance.current_workflow_execution_detail
+  context = execution_detail[:latest_execution_context]
+  puts "Making decision based on \'#{context}\'; decision_task = #{decision_task.task_token}"
+  state = JSON.load context
+  
+  if state && state.has_key?('candidates')
+    puts 'Done; completing workflow'
+    decision = {
+      :decision_type => 'CompleteWorkflowExecution',
+      :complete_workflow_execution_decision_attributes => {
+        :result => "DONE: #{state['candidates']}"
+      }
+    }
+  else
+    puts 'Scheduling PopulateCandidates'
+    decision = {
+      :decision_type => 'ScheduleActivityTask',
+      :schedule_activity_task_decision_attributes => {
+        :activity_type => SwfClient.instance.activity_type('PopulateCandidates'),
+        :activity_id => SecureRandom.uuid,
+        :task_list => task_list
+      }
+    }
+  end
+  SwfClient.instance.client.respond_decision_task_completed(
+    :task_token => decision_task.task_token,
+    :decisions => [ decision ]
+  )
+end
 
+def complete_activity(activity_result)
+  puts "Completed with result #{activity_result}"
+end
+
+next_page_token = nil
 while SwfClient.instance.current_workflow_execution
   puts "Starting poll for #{task_list[:name]}"
   decision_task = swf.poll_for_decision_task(
     :domain => domain.name,
     :task_list => task_list,
-    :identity => DECIDER_IDENTITY
+    :identity => DECIDER_IDENTITY,
+    :next_page_token => next_page_token
   )
+  next_page_token = decision_task[:next_page_token]
   puts "Decision task: #{decision_task.task_token}"
+  
   decision_task.events or next
   decision_task.events.each do |e|
     dump_decision_task_event e
-    if e.event_type == 'DecisionTaskStarted'
-      puts 'Scheduling PopulateCandidates'
-      swf.respond_decision_task_completed(
-        :task_token => decision_task.task_token,
-        :decisions => [
-          {
-            :decision_type => 'ScheduleActivityTask',
-            :schedule_activity_task_decision_attributes => {
-              :activity_type => SwfClient.instance.activity_type('PopulateCandidates'),
-              :activity_id => SecureRandom.uuid,
-              :task_list => task_list
-            }
-          }
-        ]
-      )
-    end
+    e.event_type == 'DecisionTaskStarted' and make_decision decision_task, task_list
+    e.event_type == 'ActivityTaskCompleted' and complete_activity(
+      e.activity_task_completed_event_attributes.result
+    )
   end
 end
 

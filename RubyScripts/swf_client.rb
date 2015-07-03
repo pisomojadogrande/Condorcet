@@ -28,7 +28,7 @@ class SwfClient
     end
     @domain
   end
-  
+    
   def workflow_type
     unless @workflow_type
       @workflow_type = @client.list_workflow_types(
@@ -76,6 +76,15 @@ class SwfClient
     else
       r[:execution_infos].first.execution # has [:workflow_id], [:run_id]
     end
+  end
+  
+  def current_workflow_execution_detail(seconds_ago = 3600)
+    execution = current_workflow_execution seconds_ago
+    execution or raise "No open workflows for #{domain.name}"
+    @client.describe_workflow_execution(
+      :domain => domain.name,
+      :execution => execution
+    )
   end
   
   def current_workflow_task_list(seconds_ago = 3600)
