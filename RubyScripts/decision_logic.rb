@@ -23,6 +23,9 @@ class DecisionLogic
     case e.event_type
     when 'WorkflowExecutionStarted'
       start_workflow_execution
+    when 'WorkflowExecutionSignaled'
+      attrs = e.workflow_execution_signaled_event_attributes
+      signal(attrs.signal_name, attrs.input)
     when 'ActivityTaskScheduled'
       activity_task = {
         :activity_type => e.activity_task_scheduled_event_attributes.activity_type.name,
@@ -61,6 +64,14 @@ class DecisionLogic
     @decisions.push schedule_task_decision('PopulateCandidates')
   end
   
+  def signal(signal_name, input)
+    case signal_name
+    when 'NewVoter'
+      @voters = @voters || []
+      @voters.push input
+    end
+  end
+  
   def complete_activity(activity_task)
     case activity_task[:activity_type]
     when 'PopulateCandidates'
@@ -70,7 +81,7 @@ class DecisionLogic
       decision = {
         :decision_type => 'CompleteWorkflowExecution',
         :complete_workflow_execution_decision_attributes => {
-          :result => "DONE: #{@candidates.inspect}"
+          :result => "DONE: Candidates=#{@candidates.inspect}; voters=#{@voters.inspect}"
         }
       }
       @decisions.push decision

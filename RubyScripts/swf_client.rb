@@ -86,18 +86,7 @@ class SwfClient
       r[:execution_infos].first.execution # has [:workflow_id], [:run_id]
     end
   end
-   
-  def current_workflow_task_list(seconds_ago = 3600)
-    execution = current_workflow_execution seconds_ago
-    execution or raise "No open workflows for #{domain.name}"
-    workflow_execution_description = @client.describe_workflow_execution(
-      :domain => domain.name,
-      :execution => execution
-    )
-    #puts workflow_execution_description.inspect
-    workflow_execution_description.execution_configuration.task_list
-  end
-  
+     
   def terminal_event(execution)
     terminal_event_types = [
       'WorkflowExecutionCompleted',
@@ -150,6 +139,8 @@ class SwfClient
       puts "activity_task_timed_out_event_attributes=#{e.activity_task_timed_out_event_attributes}"
     when 'ScheduleActivityTaskFailed'
       puts "schedule_activity_task_failed_event_attributes=#{e.schedule_activity_task_failed_event_attributes.inspect}"
+    when 'WorkflowExecutionSignaled'
+      puts "workflow_execution_signaled_event_attributes=#{e.workflow_execution_signaled_event_attributes}"
     end
   end
 end

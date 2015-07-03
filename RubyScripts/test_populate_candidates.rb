@@ -4,8 +4,13 @@ require 'json'
 
 swf = SwfClient.instance.client
 domain = SwfClient.instance.domain
-task_list = SwfClient.instance.current_workflow_task_list
+execution = SwfClient.instance.current_workflow_execution
 
+execution_details = swf.describe_workflow_execution(
+  :domain => domain.name,
+  :execution => execution
+)
+task_list = execution_details.execution_configuration.task_list
 puts task_list.inspect
 
 while true
@@ -27,14 +32,18 @@ while true
       line = STDIN.readline.chomp
       puts "Voter: #{line}"
       break if line.empty?
-      swf.record_activity_task_heartbeat(
-        :task_token => r.task_token,
-        :details => line.chomp
+      swf.signal_workflow_execution(
+        :domain => domain.name,
+        :workflow_id => execution.workflow_id,
+        :run_id => execution.run_id,
+        :signal_name => 'NewVoter',
+        :input => line
       )
     end
     swf.respond_activity_task_completed(
       :task_token => r.task_token
     )
+    exit 0
   else
     puts r.inspect
   end
