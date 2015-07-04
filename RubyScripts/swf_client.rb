@@ -15,8 +15,11 @@ class SwfClient
   }
   
   def initialize
-    access_key_id = ENV['AWS_ACCESS_KEY']
-    secret_key = ENV['AWS_SECRET_KEY']
+    if ENV.has_key? 'AWS_ACCESS_KEY'
+      access_key_id = ENV['AWS_ACCESS_KEY']
+      secret_key = ENV['AWS_SECRET_KEY']
+    # else credentials should come from the IAM role
+    end
 
     Aws.config[:region] = 'us-east-1'
 

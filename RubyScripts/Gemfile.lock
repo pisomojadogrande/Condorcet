@@ -1,0 +1,20 @@
+GEM
+  specs:
+    aws-sdk (2.1.2)
+      aws-sdk-resources (= 2.1.2)
+    aws-sdk-core (2.1.2)
+      jmespath (~> 1.0)
+    aws-sdk-resources (2.1.2)
+      aws-sdk-core (= 2.1.2)
+    jmespath (1.0.2)
+      multi_json (~> 1.0)
+    multi_json (1.11.1)
+
+PLATFORMS
+  x86-mingw32
+
+DEPENDENCIES
+  aws-sdk
+
+BUNDLED WITH
+   1.10.5
