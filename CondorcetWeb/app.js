@@ -4,11 +4,16 @@ var favicon = require('serve-favicon');
 var logger = require('morgan');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
+var debug = require('debug')('CondorcetWeb:app');
+var error = require('debug')('CondorcetWeb:error');
 
 var routes = require('./routes/index');
 var users = require('./routes/users');
 
 var app = express();
+
+// Comes from process.env.NODE_ENV
+debug('env=%s', app.get('env'));
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
@@ -27,6 +32,7 @@ app.use('/users', users);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
+  error('404 ' + req.query);
   var err = new Error('Not Found');
   err.status = 404;
   next(err);
