@@ -7,6 +7,7 @@ var bodyParser = require('body-parser');
 var debug = require('debug')('CondorcetWeb:app');
 var error = require('debug')('CondorcetWeb:error');
 
+var swf = require('./swf_client');
 var routes = require('./routes/index');
 var users = require('./routes/users');
 
