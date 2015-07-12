@@ -63,10 +63,11 @@ app.use(function(err, req, res, next) {
   });
 });
 
-swf.pollForActivity(function(err, taskList) {
-  if (err) debug("pollForActivity error " + err);
-  else debug("taskList: " + taskList.name);
-})
+swf.pollForActivity().then(function(taskList) {
+  debug("taskList: " + JSON.stringify(taskList));
+}).catch(function(err) {
+  debug("pollForActivity error" + err);
+});
 
 
 module.exports = app;
