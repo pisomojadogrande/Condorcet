@@ -63,7 +63,10 @@ app.use(function(err, req, res, next) {
   });
 });
 
-swf.pollForActivity();
+swf.pollForActivity(function(err, taskList) {
+  if (err) debug("pollForActivity error " + err);
+  else debug("taskList: " + taskList.name);
+})
 
 
 module.exports = app;

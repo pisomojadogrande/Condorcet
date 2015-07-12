@@ -2,6 +2,8 @@ AWS = require('aws-sdk');
 debug = require('debug')('CondorcetWeb:swf');
 error = require('debug')('CondorcetWeb:error');
 
+var DOMAIN_NAME = 'CondorcetVote';
+
 AWS.config.region = 'us-east-1';
 if (process.env.AWS_ACCESS_KEY && process.env.AWS_SECRET_KEY) {
     debug("Using AWS creds from environment");
@@ -28,7 +30,7 @@ function getMostRecentWorkflowExecution(callback) {
     oneHourAgo.setTime(oneHourAgo.getTime() - 3600*1000);
     swf.listOpenWorkflowExecutions(
         {
-            domain: 'CondorcetVote',
+            domain: DOMAIN_NAME,
             startTimeFilter: {
                 oldestDate: oneHourAgo
             }
@@ -37,8 +39,10 @@ function getMostRecentWorkflowExecution(callback) {
             var execution = null;
             if (data) {
                 debug("%d executions started in the last hour", data.executionInfos.length);
-                debug("Found execution %s started at %s", data.executionInfos[0].execution.workflowId, data.executionInfos[0].startTimestamp);
-                execution = data.executionInfos[0].execution;
+                if (data.executionInfos.length > 0) {
+                    debug("Found execution %s started at %s", data.executionInfos[0].execution.workflowId, data.executionInfos[0].startTimestamp);
+                    execution = data.executionInfos[0].execution;
+                }
             }
             callback(err, execution);
         }
@@ -61,11 +65,24 @@ function pollForWorkflowExecution(callback) {
 }
 
 module.exports = {
-    pollForActivity: function(err, onActivityReady) {
+    pollForActivity: function(onActivityReady) {
         pollForWorkflowExecution(function(err, execution) {
             if (execution) {
+                swf.describeWorkflowExecution({
+                    domain: DOMAIN_NAME,
+                    execution: execution
+                }, function(err, data) {
+                    if (data) {
+                        var taskList = data.executionConfiguration.taskList;
+                        onActivityReady(null, taskList);
+                    } else {
+                        onActivityReady(err);
+                    }
+                });
                 debug("done polling")
                 // TODO: Start polling for an activity
+            } else {
+                onActivityReady(err);
             }
         })
     }
