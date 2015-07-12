@@ -63,5 +63,7 @@ app.use(function(err, req, res, next) {
   });
 });
 
+swf.pollForActivity();
+
 
 module.exports = app;
