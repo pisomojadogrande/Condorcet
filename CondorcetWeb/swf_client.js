@@ -48,25 +48,56 @@ function pollForWorkflowExecutionPromise() {
     });
 }
 
+function loopingPollForActivity(taskList, callback) {
+    debug("Polling %s for activity", taskList);
+    swf.pollForActivityTask({
+        domain: DOMAIN_NAME,
+        taskList: taskList,
+        identity: 'CondorcetWeb'
+    }, function(err, data) {
+        if (err) error("pollForActivityTask " + err);
+        if (data) {
+            callback(data);
+        } else {
+            loopingPollForActivity(taskList, callback);
+        }
+    })
+}
+
+function loopingPollForActivityPromise(taskList) {
+    return new Promise(function(resolve, reject) {
+        loopingPollForActivity(taskList, function(data) {
+            resolve(data);
+        });
+    });
+}
+
 module.exports = {
+    
+    activity: null,
     
     taskList: null,
     
     pollForActivity: function() {
         return new Promise(function(resolve, reject) {
             pollForWorkflowExecutionPromise().then(function(execution) {
-              var describeWorkflowExecution = Promise.denodeify(swf.describeWorkflowExecution.bind(swf));
-              return describeWorkflowExecution({
-                  domain: DOMAIN_NAME,
-                  execution: execution
-              });
+                var describeWorkflowExecution = Promise.denodeify(swf.describeWorkflowExecution.bind(swf));
+                return describeWorkflowExecution({
+                    domain: DOMAIN_NAME,
+                    execution: execution
+                });
             }).then(function(data) {
-              debug("Done polling " + JSON.stringify(data));
-              taskList = data.executionConfiguration.taskList;
-              resolve(taskList);
+                debug("Execution " + JSON.stringify(data));
+                taskList = data.executionConfiguration.taskList;
+                return taskList;
+            }).then(function(taskList) {
+                return loopingPollForActivityPromise(taskList)
+            }).then(function(data) {
+                debug("Activity " + JSON.stringify(data));
+                resolve(data);
             }).catch(function(err) {
-              error("pollForActivity: " + JSON.stringify(err));
-              reject(err);
+                error("pollForActivity: " + JSON.stringify(err));
+                reject(err);
             });
         });
     }

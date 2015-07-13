@@ -63,8 +63,8 @@ app.use(function(err, req, res, next) {
   });
 });
 
-swf.pollForActivity().then(function(taskList) {
-  debug("taskList: " + JSON.stringify(taskList));
+swf.pollForActivity().then(function(activity) {
+  debug("activity: " + JSON.stringify(activity));
 }).catch(function(err) {
   debug("pollForActivity error" + err);
 });
