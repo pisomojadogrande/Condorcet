@@ -28,43 +28,67 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.use('/', routes);
-app.use('/users', users);
 
-// catch 404 and forward to error handler
-app.use(function(req, res, next) {
-  error('404 ' + req.query);
-  var err = new Error('Not Found');
-  err.status = 404;
-  next(err);
-});
+function setupRoutes(uri) {
 
-// error handlers
+  app.use(uri, routes);
+  //app.use('/users', users);
 
-// development error handler
-// will print stacktrace
-if (app.get('env') === 'development') {
+  // catch 404 and forward to error handler
+  app.use(function(req, res, next) {
+    error('404 ' + req.query);
+    var err = new Error('Not Found');
+    err.status = 404;
+    next(err);
+  });
+  
+  // error handlers
+  
+  // development error handler
+  // will print stacktrace
+  if (app.get('env') === 'development') {
+    app.use(function(err, req, res, next) {
+      res.status(err.status || 500);
+      res.render('error', {
+        message: err.message,
+        error: err
+      });
+    });
+  }
+  
+  // production error handler
+  // no stacktraces leaked to user
   app.use(function(err, req, res, next) {
     res.status(err.status || 500);
     res.render('error', {
       message: err.message,
-      error: err
+      error: {}
     });
-  });
+  });  
 }
 
-// production error handler
-// no stacktraces leaked to user
-app.use(function(err, req, res, next) {
-  res.status(err.status || 500);
-  res.render('error', {
-    message: err.message,
-    error: {}
-  });
-});
+
 
 swf.pollForActivity().then(function(activity) {
   debug("activity: " + JSON.stringify(activity));
+  var uri = "/" + activity.input;
+  debug("uri: " + uri);
+  setupRoutes(uri);
+  
+  var metadataService = new AWS.MetadataService();
+  metadataService.request('/latest/meta-data/public-hostname', function(err, data) {
+    if (err && err.code == "ENETUNREACH") {
+      debug("ENETUNREACH from metadata service. Probably running on localhost");
+      err = null;
+      data = 'localhost';
+    }
+    if (err) error("Metadata service: " + JSON.stringify(err));
+    if (data) {
+      debug("public-hostname " + JSON.stringify(data));
+      var url = "http://" + data + ":" + app.get('port') + uri;
+      debug("url: " + url);
+    }
+  });
 }).catch(function(err) {
   debug("pollForActivity error" + err);
 });

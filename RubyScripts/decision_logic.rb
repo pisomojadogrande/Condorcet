@@ -55,7 +55,8 @@ class DecisionLogic
       :schedule_activity_task_decision_attributes => {
         :activity_type => SwfClient.instance.activity_type(activity_type),
         :activity_id => SecureRandom.uuid,
-        :task_list => @task_list
+        :task_list => @task_list,
+        :input => "#{SecureRandom.hex 4}"
       }
     }
   end
