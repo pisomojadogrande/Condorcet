@@ -66,6 +66,7 @@ class DecisionLogic
   end
   
   def signal(signal_name, input)
+    puts "SIGNAL #{signal_name}: #{input}"
     case signal_name
     when 'NewVoter'
       @voters = @voters || []

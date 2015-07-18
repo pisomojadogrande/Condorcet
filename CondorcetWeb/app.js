@@ -87,6 +87,7 @@ swf.pollForActivity().then(function(activity) {
       debug("public-hostname " + JSON.stringify(data));
       var url = "http://" + data + ":" + app.get('port') + uri;
       debug("url: " + url);
+      swf.sendSignal("adminUrl", url);
     }
   });
 }).catch(function(err) {

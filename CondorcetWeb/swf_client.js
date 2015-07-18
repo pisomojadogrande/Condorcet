@@ -78,6 +78,8 @@ module.exports = {
     
     taskList: null,
     
+    workflowId: null,
+    
     pollForActivity: function() {
         return new Promise(function(resolve, reject) {
             pollForWorkflowExecutionPromise().then(function(execution) {
@@ -89,16 +91,29 @@ module.exports = {
             }).then(function(data) {
                 debug("Execution " + JSON.stringify(data));
                 taskList = data.executionConfiguration.taskList;
+                workflowId = data.executionInfo.execution.workflowId;
                 return taskList;
             }).then(function(taskList) {
                 return loopingPollForActivityPromise(taskList)
             }).then(function(data) {
                 debug("Activity " + JSON.stringify(data));
+                activity = data;
                 resolve(data);
             }).catch(function(err) {
                 error("pollForActivity: " + JSON.stringify(err));
                 reject(err);
             });
+        });
+    },
+    
+    sendSignal: function(signalName, signalValue) {
+        swf.signalWorkflowExecution({
+            domain: DOMAIN_NAME,
+            signalName: signalName,
+            workflowId: workflowId,
+            input: signalValue
+        }, function(err, data) {
+           if (err) error("Error sending signal " + signalName); 
         });
     }
     
