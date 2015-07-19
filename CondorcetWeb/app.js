@@ -31,6 +31,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 function setupRoutes(uri) {
 
+  debug("Routes at " + uri);
   app.use(uri, routes);
   //app.use('/users', users);
 
@@ -67,32 +68,36 @@ function setupRoutes(uri) {
   });  
 }
 
+if (process.env.FAKE) {
+  setupRoutes("/" + process.env.FAKE);
+} else {
+  swf.pollForActivity().then(function(activity) {
+    debug("activity: " + JSON.stringify(activity));
+    var uri = "/" + activity.input;
+    setupRoutes(uri);
+    
+    var metadataService = new AWS.MetadataService();
+    metadataService.request('/latest/meta-data/public-hostname', function(err, data) {
+      if (err && err.code == "ENETUNREACH") {
+        debug("ENETUNREACH from metadata service. Probably running on localhost");
+        err = null;
+        data = 'localhost';
+      }
+      if (err) error("Metadata service: " + JSON.stringify(err));
+      if (data) {
+        debug("public-hostname " + JSON.stringify(data));
+        var url = "http://" + data + ":" + app.get('port') + uri;
+        debug("url: " + url);
+        swf.sendSignal("adminUrl", url);
+      }
+    });
+  }).catch(function(err) {
+    debug("pollForActivity error" + err);
+  });  
+}
 
 
-swf.pollForActivity().then(function(activity) {
-  debug("activity: " + JSON.stringify(activity));
-  var uri = "/" + activity.input;
-  debug("uri: " + uri);
-  setupRoutes(uri);
-  
-  var metadataService = new AWS.MetadataService();
-  metadataService.request('/latest/meta-data/public-hostname', function(err, data) {
-    if (err && err.code == "ENETUNREACH") {
-      debug("ENETUNREACH from metadata service. Probably running on localhost");
-      err = null;
-      data = 'localhost';
-    }
-    if (err) error("Metadata service: " + JSON.stringify(err));
-    if (data) {
-      debug("public-hostname " + JSON.stringify(data));
-      var url = "http://" + data + ":" + app.get('port') + uri;
-      debug("url: " + url);
-      swf.sendSignal("adminUrl", url);
-    }
-  });
-}).catch(function(err) {
-  debug("pollForActivity error" + err);
-});
+
 
 
 module.exports = app;
