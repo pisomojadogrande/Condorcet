@@ -62,7 +62,7 @@ class SwfClient
         :default_task_schedule_to_close_timeout => '120',
         :default_task_schedule_to_start_timeout => '120',
         :default_task_start_to_close_timeout => '120',
-        :default_task_heartbeat_timeout => '120'
+        :default_task_heartbeat_timeout => '30'
       )
     rescue Aws::SWF::Errors::TypeAlreadyExistsFault => e
       # okay

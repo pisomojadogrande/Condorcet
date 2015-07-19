@@ -115,6 +115,15 @@ module.exports = {
         }, function(err, data) {
            if (err) error("Error sending signal " + signalName); 
         });
-    }
-    
+    },
+
+    heartbeatInterval: setInterval(function() {
+        if (this.activity) {
+            swf.recordActivityTaskHeartbeat({
+                taskToken: this.activity.taskToken
+            }, function(err) {
+                if (err) error("Error sending heartbeat");
+            });
+        }
+    }, 5000)
 };
