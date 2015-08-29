@@ -69,6 +69,7 @@ function setupRoutes(uri) {
 }
 
 if (process.env.FAKE) {
+  debug("FAKE set to " + process.env.FAKE);
   setupRoutes("/" + process.env.FAKE);
 } else {
   swf.pollForActivity().then(function(activity) {
