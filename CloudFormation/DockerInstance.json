@@ -1,0 +1,45 @@
+{
+    "AWSTemplateFormatVersion" : "2010-09-09",
+    "Description": "Single instance with Docker installed",
+    "Parameters": {
+        "VpcId": {
+            "Type": "AWS::EC2::VPC::Id"
+        },
+        "SubnetId": {
+            "Type": "AWS::EC2::Subnet::Id"
+        },
+        "SecurityGroupId": {
+            "Type": "AWS::EC2::SecurityGroup::Id",
+            "Description": "Security Group ID.  Should allow access to port 22"
+        },
+        "SSHKey": {
+            "Type": "AWS::EC2::KeyPair::KeyName"
+        }
+    },
+    "Resources": {
+        "Ec2Instance": {
+            "Type": "AWS::EC2::Instance",
+            "Properties": {
+                "ImageId": "ami-1ecae776",
+                "InstanceType": "t2.micro",
+                "KeyName": { "Ref": "SSHKey" },
+                "SecurityGroupIds": [{ "Ref": "SecurityGroupId" }],
+                "SubnetId": { "Ref": "SubnetId" },
+                "Tags": [ { "Key": "Name", "Value": "Docker test instance" } ],
+                "UserData": { "Fn::Base64": { "Fn::Join": [ "\n", [
+                    "#!/bin/bash",
+                    "yum -y install docker",
+                    "service docker start",
+                    "usermod -a -G docker ec2-user",
+                    "docker pull pisomojadogrande/condorcet-web"
+                ] ] } }
+            }
+        }
+    },
+    "Outputs": {
+        "PublicIp": {
+            "Description": "Public IP address",
+            "Value": { "Fn::GetAtt": [ "Ec2Instance", "PublicIp" ] }
+        }
+    }
+}
